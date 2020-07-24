@@ -15,6 +15,7 @@ class WebHunter(Hunter):
     def hunt_flats(self, max_pages=1):
         """Crawl all URLs, and send notifications to users of new flats"""
         filter_set = Filter.builder() \
+                       .read_config(self.config) \
                        .filter_already_seen(self.id_watch) \
                        .build()
 
