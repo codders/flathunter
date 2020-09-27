@@ -5,6 +5,7 @@ import datetime
 
 from flathunter.abstract_crawler import Crawler
 
+
 class CrawlImmobilienscout(Crawler):
     """Implementation of Crawler interface for ImmobilienScout"""
 
@@ -12,8 +13,27 @@ class CrawlImmobilienscout(Crawler):
     URL_PATTERN = re.compile(r'https://www\.immobilienscout24\.de')
     RESULT_LIMIT = 50
 
-    def __init__(self):
+    def __init__(self, config):
         logging.getLogger("requests").setLevel(logging.WARNING)
+        self.config = config
+        self.driver = None
+        self.captcha_api_key = None
+        self.checkbox = None
+        self.afterlogin_string = None
+        if "captcha" in config:
+            self.captcha_api_key = self.config.get('captcha', dict()).get('api_key', '')
+            self.driver_executable_path = self.config.get('captcha', dict()).get('driver_path', '')
+            self.driver_arguments = self.config.get('captcha', dict()).get('driver_arguments', list())
+            if self.config.get('captcha', dict()).get('checkbox', '') == "":
+                self.checkbox = False
+            else:
+                self.checkbox = self.config.get('captcha', dict()).get('checkbox', '')
+            if self.config.get('captcha', dict()).get('afterlogin_string', '') == "":
+                self.afterlogin_string = ""
+            else:
+                self.afterlogin_string = self.config.get('captcha', dict()).get('afterlogin_string', '')
+            if self.captcha_api_key is not None or self.driver_executable_path is not None:
+                self.driver = self.configure_driver(self.driver_executable_path, self.driver_arguments)
 
     def get_results(self, search_url, max_pages=None):
         """Loads the exposes from the ImmoScout site, starting at the provided URL"""
@@ -30,11 +50,11 @@ class CrawlImmobilienscout(Crawler):
 
         # load first page to get number of entries
         page_no = 1
-        soup = self.get_page(search_url, page_no)
+        soup = self.get_page(search_url, self.driver, page_no)
         try:
             no_of_results = int(
                 soup.find_all(lambda e: e.has_attr('data-is24-qa') and \
-                                        e['data-is24-qa'] == 'resultlist-resultCount')[0]\
+                                        e['data-is24-qa'] == 'resultlist-resultCount')[0] \
                     .text.replace('.', ''))
         except IndexError:
             self.__log__.debug('Index Error occurred')
@@ -50,16 +70,17 @@ class CrawlImmobilienscout(Crawler):
                 'Next Page, Number of entries : %d, no of results: %d',
                 len(entries), no_of_results)
             page_no += 1
-            soup = self.get_page(search_url, page_no)
+            soup = self.get_page(search_url, self.driver, page_no)
             cur_entry = self.extract_data(soup)
             if cur_entry is list():
                 break
             entries.extend(cur_entry)
         return entries
 
-    def get_page(self, search_url, page_no=None):
+    def get_page(self, search_url, driver, page_no=None):
         """Applies a page number to a formatted search URL and fetches the exposes at that page"""
-        return self.get_soup_from_url(search_url.format(page_no))
+        return self.get_soup_from_url(search_url.format(page_no), driver, self.captcha_api_key, self.checkbox,
+                                      self.afterlogin_string)
 
     def get_expose_details(self, expose):
         """Loads additional details for an expose by processing the expose detail URL"""
@@ -98,7 +119,7 @@ class CrawlImmobilienscout(Crawler):
         address_fields = soup.find_all(lambda e: e.has_attr('class') and \
                                                  'result-list-entry__address' in e['class'])
         gallery_elements = soup.find_all(lambda e: e.has_attr('class') and \
-                                         'result-list-entry__gallery-container' in e['class'])
+                                                   'result-list-entry__gallery-container' in e['class'])
         for idx, title_el in enumerate(title_elements):
             attr_els = attr_container_els[idx].find_all('dd')
             try:
@@ -106,20 +127,20 @@ class CrawlImmobilienscout(Crawler):
             except AttributeError:
                 address = "No address given"
 
-            gallery_tag = gallery_elements[idx].find("div", {"class": "gallery-container"})
-            if gallery_tag is not None:
-                image_tag = gallery_tag.find("img")
-                try:
-                    image = image_tag["src"]
-                except KeyError:
-                    image = image_tag["data-lazy-src"]
-            else:
-                image = None
+            #            gallery_tag = gallery_elements[idx].find("div", {"class": "gallery-container"})
+            #            if gallery_tag is not None:
+            #                image_tag = gallery_tag.find("img")
+            #                try:
+            #                    image = image_tag["src"]
+            #                except KeyError:
+            #                    image = image_tag["data-lazy-src"]
+            #            else:
+            #                image = None
 
             details = {
                 'id': expose_ids[idx],
                 'url': expose_urls[idx],
-                'image': image,
+                #               'image': image,
                 'title': title_el.text.strip().replace('NEU', ''),
                 'address': address,
                 'crawler': self.get_name()

@@ -23,6 +23,7 @@ mock-firestore = "*"
 pytest-mock = "*"
 pytest = "*"
 pylint = "*"
+selenium = "*"
 
 [dev-packages]
 

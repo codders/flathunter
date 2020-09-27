@@ -2,9 +2,8 @@
 import logging
 import re
 
-import requests
-from bs4 import BeautifulSoup
 from flathunter.abstract_crawler import Crawler
+
 
 class CrawlWgGesucht(Crawler):
     """Implementation of Crawler interface for WgGesucht"""
@@ -69,15 +68,13 @@ class CrawlWgGesucht(Crawler):
 
             entries.append(details)
 
-        self.__log__.debug('extracted: %d', entries)
+        self.__log__.debug('extracted: {}'.format(entries))
 
         return entries
 
-    @staticmethod
-    def load_address(url):
+    def load_address(self, url):
         """Extract address from expose itself"""
-        response = requests.get(url)
-        flat = BeautifulSoup(response.content, 'lxml')
-        address = ' '.join(flat.find('div', {"class": "col-sm-4 mb10"})\
-                     .find("a", {"href": "#"}).text.strip().split())
+        response = self.get_soup_from_url(url)
+        address = ' '.join(response.find('div', {"class": "col-sm-4 mb10"})
+                           .find("a", {"href": "#"}).text.strip().split())
         return address

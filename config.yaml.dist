@@ -113,6 +113,15 @@ google_maps_api:
     url: https://maps.googleapis.com/maps/api/distancematrix/json?origins={origin}&destinations={dest}&mode={mode}&sensor=true&key={key}&arrival_time={arrival}
     enable: False
 
+# Register at 2captcha and enter your API key below. you will also
+# have to install a Chrome Web Driver and write below the path to
+# the executable.
+captcha:
+  api_key: YOUR_API_KEY
+  driver_path: YOUR_CHROME_DRIVER_PATH
+  driver_arguments:
+    - "--headless"
+
 # Sending messages using Telegram requires a Telegram Bot configured. 
 # Telegram.org offers a good documentation about how to create a bot.
 # Once you read it, will make sense. Still: bot_token should hold the

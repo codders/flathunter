@@ -76,6 +76,9 @@ $ curl https://api.telegram.org/bot[BOT-TOKEN]/getUpdates
 
 to get list of messages the Bot has received. You will see your Chat ID in there.
 
+#### 2Captcha
+Some sites implement Captcha to avoid being crawled by evil web scrappers. Since our crawler is not an evil one, the people at [2captcha](https://2captcha.com) provide us a service that helps you solve them. Head to the `2captchas` website, register and pay 3$ for 1000 solved captcha's! Check the `config.yaml.dist` on how to configure `2captcha` with `flathunter`. You will also be required to install a [chrome-web-driver](https://chromedriver.chromium.org/downloads) on your system that runs `flathunter`. Depending on your system, you can install it in many ways, search yourself on how to install the `chrome-web-driver`, on your own system. 
+
 #### Google API
 
 To use the distance calculation feature a [Google API-Key](https://developers.google.com/maps/documentation/javascript/get-api-key) is needed and requires the Distance Matrix API to be enabled. (This is NOT free)

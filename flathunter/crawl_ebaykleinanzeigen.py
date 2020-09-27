@@ -2,8 +2,6 @@
 import logging
 import re
 import datetime
-import requests
-from bs4 import BeautifulSoup
 from flathunter.abstract_crawler import Crawler
 
 class CrawlEbayKleinanzeigen(Crawler):
@@ -30,12 +28,9 @@ class CrawlEbayKleinanzeigen(Crawler):
     def __init__(self):
         logging.getLogger("requests").setLevel(logging.WARNING)
 
-    def get_soup_from_url(self, url):
-        """Creates a Soup object from the HTML at the provided URL"""
-        resp = requests.get(url, headers={'User-Agent': self.USER_AGENT})
-        if resp.status_code != 200:
-            self.__log__.error("Got response (%i): %s", resp.status_code, resp.content)
-        return BeautifulSoup(resp.content, 'html.parser')
+    def get_page(self, url):
+        """Applies a page number to a formatted search URL and fetches the exposes at that page"""
+        return self.get_soup_from_url(url)
 
     def get_expose_details(self, expose):
         soup = self.get_page(expose['url'])
@@ -113,7 +108,7 @@ class CrawlEbayKleinanzeigen(Crawler):
 
     def load_address(self, url):
         """Extract address from expose itself"""
-        expose_soup = self.get_soup_from_url(url)
+        expose_soup = self.get_page(url)
         try:
             street_raw = expose_soup.find(id="street-address").text
         except AttributeError:
