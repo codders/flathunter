@@ -18,13 +18,13 @@ class Config:
     def __init__(self, filename=None, string=None):
         if string is not None:
             self.config = yaml.safe_load(string)
-            return
-        if filename is None:
-            filename = os.path.dirname(os.path.abspath(__file__)) + "/../config.yaml"
-        self.__log__.info("Using config %s", filename)
-        with open(filename) as file:
-            self.config = yaml.safe_load(file)
-        self.__searchers__ = [CrawlImmobilienscout(self.config),
+        else:
+            if filename is None:
+                filename = os.path.dirname(os.path.abspath(__file__)) + "/../config.yaml"
+            self.__log__.info("Using config %s", filename)
+            with open(filename) as file:
+                self.config = yaml.safe_load(file)
+        self.__searchers__ = [CrawlImmobilienscout(self),
                               CrawlWgGesucht(),
                               CrawlEbayKleinanzeigen(),
                               CrawlImmowelt()]
@@ -60,3 +60,6 @@ class Config:
         builder = Filter.builder()
         builder.read_config(self.config)
         return builder.build()
+
+    def captcha_enabled(self):
+        return ("captcha" in self.config)

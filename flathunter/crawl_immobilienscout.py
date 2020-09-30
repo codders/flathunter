@@ -20,18 +20,19 @@ class CrawlImmobilienscout(Crawler):
         self.captcha_api_key = None
         self.checkbox = None
         self.afterlogin_string = None
-        if "captcha" in config:
-            self.captcha_api_key = self.config.get('captcha', dict()).get('api_key', '')
-            self.driver_executable_path = self.config.get('captcha', dict()).get('driver_path', '')
-            self.driver_arguments = self.config.get('captcha', dict()).get('driver_arguments', list())
-            if self.config.get('captcha', dict()).get('checkbox', '') == "":
+        if config.captcha_enabled():
+            captcha_config = config.get('captcha')
+            self.captcha_api_key = captcha_config.get('api_key', '')
+            self.driver_executable_path = captcha_config.get('driver_path', '')
+            self.driver_arguments = captcha_config.get('driver_arguments', list())
+            if captcha_config.get('checkbox', '') == "":
                 self.checkbox = False
             else:
-                self.checkbox = self.config.get('captcha', dict()).get('checkbox', '')
-            if self.config.get('captcha', dict()).get('afterlogin_string', '') == "":
+                self.checkbox = captcha_config.get('checkbox', '')
+            if captcha_config.get('afterlogin_string', '') == "":
                 self.afterlogin_string = ""
             else:
-                self.afterlogin_string = self.config.get('captcha', dict()).get('afterlogin_string', '')
+                self.afterlogin_string = captcha_config.get('afterlogin_string', '')
             if self.captcha_api_key is not None or self.driver_executable_path is not None:
                 self.driver = self.configure_driver(self.driver_executable_path, self.driver_arguments)
 

@@ -1,12 +1,13 @@
 import pytest
 
 from flathunter.crawl_immobilienscout import CrawlImmobilienscout
+from flathunter.config import Config
 
 TEST_URL = 'https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten?numberofrooms=2.0-&price=-1500.0&livingspace=70.0-&sorting=2&pagenumber=1'
 
 @pytest.fixture
 def crawler():
-    return CrawlImmobilienscout()
+    return CrawlImmobilienscout(Config())
 
 def test_crawl_works(crawler):
     soup = crawler.get_page(TEST_URL, 1)
