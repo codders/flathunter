@@ -1,18 +1,26 @@
 """Expose crawler for ImmobilienScout"""
-import re
 import datetime
+import re
 
-from selenium.common.exceptions import JavascriptException
 from jsonpath_ng import parse
+from selenium.common.exceptions import JavascriptException
 
-from flathunter.logging import logger
 from flathunter.abstract_crawler import Crawler
+from flathunter.logging import logger
+
 
 class CrawlImmobilienscout(Crawler):
     """Implementation of Crawler interface for ImmobilienScout"""
 
     URL_PATTERN = re.compile(r'https://www\.immobilienscout24\.de')
+
+    JSON_PATH_PARSER_ENTRIES = parse("$..['resultlist.realEstate']")
+    JSON_PATH_PARSER_IMAGES = parse("$..galleryAttachments..['@href']")
+
     RESULT_LIMIT = 50
+
+    FALLBACK_IMAGE_URL = "https://www.static-immobilienscout24.de/statpic/placeholder_house/" + \
+                         "496c95154de31a357afa978cdb7f15f0_placeholder_medium.png"
 
     def __init__(self, config):
         super().__init__(config)
@@ -88,28 +96,38 @@ class CrawlImmobilienscout(Crawler):
 
     def get_entries_from_json(self, json):
         """Get entries from JSON"""
-        jsonpath_expr = parse("$..['resultlist.realEstate']")
         return [
-          self.extract_entry_from_javascript(entry.value) for entry in jsonpath_expr.find(json)
+            self.extract_entry_from_javascript(entry.value) for entry in self.JSON_PATH_PARSER_ENTRIES.find(json)
         ]
 
     def extract_entry_from_javascript(self, entry):
         """Get single entry from JavaScript"""
-        image_path = parse("$..galleryAttachments..['@xlink.href']")
+
+        # the url that is being returned to the frontend has a placeholder for screen size. (%WIDTH% and %HEIGHT%)
+        # The website's frontend fills these variables based on the user's screen size.
+        # If we remove this part, the API will return the original size of the image.
+        #
+        # Before:
+        # https://pictures.immobilienscout24.de/listings/$$IMAGE_ID$$.jpg/ORIG/legacy_thumbnail/%WIDTH%x%HEIGHT%3E/format/webp/quality/50
+        #
+        # After: https://pictures.immobilienscout24.de/listings/$$IMAGE_ID$$.jpg
+
+        images = [
+            '/'.join(image.value.split('/')[:5]) for image in self.JSON_PATH_PARSER_IMAGES.find(entry)
+        ]
+
         return {
-            'id': int(entry["@id"]),
-            'url': ("https://www.immobilienscout24.de/expose/" + str(entry["@id"])),
-            'image': next(
-                iter([ galleryImage.value for galleryImage in image_path.find(entry) ]),
-                ("https://www.static-immobilienscout24.de/"
-                "statpic/placeholder_house/496c95154de31a357afa978cdb7f15f0_placeholder_medium.png")
-            ),
-            'title': entry["title"],
-            'address': entry["address"]["description"]["text"],
+            'id': int(entry.get("@id", 0)),
+            'url': ("https://www.immobilienscout24.de/expose/" + str(entry.get("@id", 0))),
+            'image': images[0] if len(images) else self.FALLBACK_IMAGE_URL,
+            'images': images,
+            'title': entry.get("title", ''),
+            'address': entry.get("address", {}).get("description", {}).get("text", ''),
             'crawler': self.get_name(),
-            'price': str(entry["price"]["value"]),
-            'size': str(entry["livingSpace"]),
-            'rooms': str(entry["numberOfRooms"])
+            'price': str(entry.get("price", {}).get("value", '')),
+            'total_price': str(entry.get('calculatedTotalRent', {}).get("totalRent", {}).get('value', '')),
+            'size': str(entry.get("livingSpace", '')),
+            'rooms': str(entry.get("numberOfRooms", ''))
         }
 
     def get_page(self, search_url, driver=None, page_no=None):
@@ -153,16 +171,13 @@ class CrawlImmobilienscout(Crawler):
                 expose_urls.append(link.get('href'))
 
         attr_container_els = soup.find_all(
-          lambda e: e.has_attr('data-is24-qa') and \
-                    e['data-is24-qa'] == "attributes"
-          )
+            lambda e: e.has_attr('data-is24-qa') and e['data-is24-qa'] == "attributes"
+        )
         address_fields = soup.find_all(
-          lambda e: e.has_attr('class') and \
-                    'result-list-entry__address' in e['class']
-          )
+            lambda e: e.has_attr('class') and 'result-list-entry__address' in e['class']
+        )
         gallery_elements = soup.find_all(
-          lambda e: e.has_attr('class') and \
-                    'result-list-entry__gallery-container' in e['class']
+            lambda e: e.has_attr('class') and 'result-list-entry__gallery-container' in e['class']
         )
         for idx, title_el in enumerate(title_elements):
             attr_els = attr_container_els[idx].find_all('dd')
