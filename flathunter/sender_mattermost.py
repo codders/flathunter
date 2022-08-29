@@ -1,11 +1,14 @@
 """Functions and classes related to sending Telegram messages"""
 import json
+
 import requests
 
-from flathunter.logging import logger
+from flathunter.abstract_notifier import Notifier
 from flathunter.abstract_processor import Processor
+from flathunter.logging import logger
 
-class SenderMattermost(Processor):
+
+class SenderMattermost(Processor, Notifier):
     """Expose processor that sends Mattermost messages"""
 
     def __init__(self, config):
@@ -23,10 +26,14 @@ class SenderMattermost(Processor):
             address=expose['address'],
             durations="" if 'durations' not in expose else expose[
                 'durations']).strip()
-        self.send_msg(message)
+        self.notify(message)
         return expose
 
-    def send_msg(self, message):
+    def notify(self, message):
+        """Send message to the mattermost webhook"""
+        self.__send_text(message)
+
+    def __send_text(self, message: str):
         """Send messages to the mattermost webhook"""
         logger.debug(('webhook_url:', self.webhook_url))
         logger.debug(('message', message))
@@ -34,8 +41,8 @@ class SenderMattermost(Processor):
             self.webhook_url,
             data=json.dumps({"text": message})
         )
-        logger.debug("Got response (%i): %s", resp.status_code,
-                           resp.content)
+        logger.debug("Got response (%i): %s", resp.status_code, resp.content)
+
         # handle error
         if resp.status_code != 200:
             logger.error(
