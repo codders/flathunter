@@ -64,6 +64,12 @@ class SenderTelegram(Processor, Notifier):
             status_code = response.status_code
             logger.error("When sending bot message, we got status %i with message: %s",
                          status_code, data)
+            if resp.status_code == 403:
+                if "description" in data:
+                    if "bot was blocked by the user" in data["description"]:
+                        raise BotBlockedException("User %i blocked the bot" % chat_id)
+                    if "user is deactivated" in data["description"]:
+                        raise UserDeactivatedException("User %i has been deactivated" % chat_id)
             return {}
 
         return data.get('result', {})
